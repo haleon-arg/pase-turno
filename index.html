@@ -23,6 +23,7 @@
   --accent:#f2b234; --accent-ink:#2a1d00;
   --ok:#3cc47a; --ok-soft:#173527; --warn:#f0a62a; --warn-soft:#3a2d12; --bad:#f06454; --bad-soft:#3d1d1a; --idle:#7d8a97; --idle-soft:#26303a; --info:#6aa6ec; --info-soft:#1a2c42; --on-ok:#0b1f14; color-scheme:dark}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 .wa{font:700 15px var(--f-body);background:var(--ok);color:var(--on-ok);border-radius:9px;padding:11px 18px;text-decoration:none;display:inline-flex;align-items:center}
 .aviso{border-color:var(--ok)}
 .aviso pre{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:13px/1.5 var(--f-mono);background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:12px;max-height:340px;overflow:auto}
@@ -135,8 +136,8 @@ details.more p{margin:6px 0 0;white-space:pre-line;font-size:13.5px;overflow-wra
 .heat{display:grid;gap:3px;min-width:520px}
 .heat .rl{font:600 12px var(--f-mono);color:var(--muted);align-self:center;white-space:nowrap}
 .heat .dl{font:500 10.5px var(--f-mono);color:var(--muted);text-align:center;white-space:nowrap}
-.heat button{height:24px;border:0;border-radius:3px;cursor:pointer;padding:0;font:600 9.5px var(--f-mono);color:transparent}
-.heat button:hover{color:var(--ink)}
+.heat button{height:26px;border:0;border-radius:3px;cursor:pointer;padding:0;font:700 11px var(--f-mono);font-variant-numeric:tabular-nums;color:#fff;overflow:hidden;white-space:nowrap}
+.heat button.h-warn{color:#2a1d00}
 .heat button.sel{outline:2px solid var(--ink);outline-offset:1px}
 .h-ok{background:var(--ok)}.h-warn{background:var(--warn)}.h-bad{background:var(--bad)}.h-idle{background:var(--idle-soft)}.h-nodata{background:repeating-linear-gradient(135deg,var(--idle-soft) 0 3px,var(--surface) 3px 6px);box-shadow:inset 0 0 0 1px var(--idle)}.h-none{background:transparent;box-shadow:inset 0 0 0 1px var(--line)}
 .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--muted)}
@@ -167,6 +168,8 @@ form{display:flex;flex-direction:column;gap:14px}
 .primary{font:700 16px var(--f-body);background:var(--accent);color:var(--accent-ink);border:0;border-radius:9px;padding:12px 22px;cursor:pointer}
 .secondary{font:600 14px var(--f-body);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px 14px;cursor:pointer}
 .actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.chip.borr{background:var(--warn-soft);color:var(--warn)}
+.savebar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;background:var(--info-soft);border-radius:10px;padding:10px 14px;font-size:14px}
 .notice{background:var(--info-soft);border-radius:8px;padding:9px 12px;font-size:13.5px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
 .mlabel{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
 
@@ -181,7 +184,7 @@ form{display:flex;flex-direction:column;gap:14px}
       <div class="lamp" aria-hidden="true"></div>
       <div>
         <h1>Pase de turno</h1>
-        <p>Value Stream · objetivo OEE <span class="num" id="vsTgtLbl">75%</span></p>
+        <p>Value Stream · target UPDT <span class="num">16%</span> · OEE <span class="num" id="vsTgtLbl">75%</span></p>
       </div>
     </div>
     <div class="tabs" role="tablist">
@@ -210,7 +213,7 @@ form{display:flex;flex-direction:column;gap:14px}
       <div class="ph"><h2>UPDT por máquina</h2><span class="sub">turnos con pase, contra el target de cada máquina · tocá una celda</span></div>
       <div class="heat-scroll"><div class="heat" id="heat"></div></div>
       <div class="legend">
-        <span><i class="h-ok"></i>≤ target</span><span><i class="h-warn"></i>hasta 5 pts arriba</span><span><i class="h-bad"></i>más de 5 pts arriba</span><span><i class="h-nodata"></i>produjo, sin UPDT informado</span><span><i class="h-idle"></i>no planificado / prueba</span><span><i class="h-none"></i>sin reporte</span>
+        <span><i class="h-ok"></i>≤ target</span><span><i class="h-warn"></i>hasta 2 pts arriba</span><span><i class="h-bad"></i>más de 2 pts arriba</span><span><i class="h-nodata"></i>produjo, sin UPDT informado</span><span><i class="h-idle"></i>no planificado / prueba</span><span><i class="h-none"></i>sin reporte</span>
       </div>
     </div>
   </section>
@@ -226,6 +229,8 @@ form{display:flex;flex-direction:column;gap:14px}
 <script>
 /* ---------- configuración de planta ---------- */
 const VS_TARGET = 75;
+const VS_UPDT_TARGET = 16;
+const bandUPDTvs = v => v==null ? "idle" : v <= VS_UPDT_TARGET ? "ok" : v <= VS_UPDT_TARGET+2 ? "warn" : "bad";
 // Pegá acá la URL de la app web de Google Apps Script (termina en /exec)
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyyOFNE81LHiqmKGe-iRWY0sKLIjDrLx8vnvG8NGs9Vz7TlrpR15VRqrtAQKwpYADYc/exec";
 const APP_LINK = location.href.split("#")[0];
@@ -252,12 +257,13 @@ const pad = n => String(n).padStart(2,"0");
 const ymd = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
 const today = () => ymd(new Date());
 const addDays = (f,n) => { const [y,m,d] = f.split("-").map(Number); return ymd(new Date(y,m-1,d+n)); };
+const hhmm = iso => { try { return new Date(iso).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}); } catch(_){ return ""; } };
 const fmtDate = f => { const [y,m,d] = f.split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString("es-AR",{weekday:"short",day:"numeric",month:"short"}); };
 const numOrNull = v => (v === "" || v == null || isNaN(Number(v))) ? null : Number(v);
 const maqCfg = id => MAQ.find(m => m.id === id);
 const fallaMin = l => (l.fallas||[]).reduce((s,f)=>s+(Number(f.minutos)||0),0);
 function bandOEE(l){ const c = maqCfg(l?.id); if (!l || l.estado!=="prod" || l.oee==null) return "idle"; return l.oee >= c.oee ? "ok" : l.oee >= c.oee-5 ? "warn" : "bad"; }
-function bandUPDT(l){ const c = maqCfg(l?.id); if (!l || l.estado!=="prod") return "idle"; if (l.updt==null) return "nodata"; return l.updt <= c.updt ? "ok" : l.updt <= c.updt+5 ? "warn" : "bad"; }
+function bandUPDT(l){ const c = maqCfg(l?.id); if (!l || l.estado!=="prod") return "idle"; if (l.updt==null) return "nodata"; return l.updt <= c.updt ? "ok" : l.updt <= c.updt+2 ? "warn" : "bad"; }
 const UPDT_SCALE = 50;
 function bandLow(val, tgt){ if (val==null || tgt==null) return ""; return val <= tgt ? "c-ok" : val <= tgt+5 ? "c-warn" : "c-bad"; }
 function bandHigh(val, tgt){ if (val==null) return ""; return val >= tgt ? "c-ok" : val >= tgt-5 ? "c-warn" : "c-bad"; }
@@ -267,9 +273,11 @@ let reports = new Map(), sel = {fecha:null, turno:null}, db = null, downloads = 
 /* ---------- pestañas y selector ---------- */
 function setTab(form){ $("tabView").setAttribute("aria-selected",String(!form)); $("tabForm").setAttribute("aria-selected",String(form)); $("viewDash").style.display = form?"none":"flex"; $("viewForm").hidden = !form; }
 $("tabView").onclick = () => setTab(false);
-$("tabForm").onclick = () => setTab(true);
+$("tabForm").onclick = () => { setTab(true); if (window.checkExists) window.checkExists(false); };
 TURNOS.forEach(t => { const b = el("button"); b.type="button"; b.dataset.k=t.k; b.append(t.n, el("small",null,t.h)); b.onclick = () => { sel.turno=t.k; avisoOpen=false; renderDash(); }; $("pickTurno").append(b); });
 $("pickDate").onchange = e => { if (e.target.value){ sel.fecha = e.target.value; avisoOpen=false; renderDash(); } };
+function unirROT(x){ if (x && x.rot){ x.pendiente = [x.pendiente, x.rot].filter(Boolean).join("\n"); delete x.rot; } return x; }
+function normalizar(r){ (r.lineas||[]).forEach(unirROT); (r.elaboracion||[]).forEach(unirROT); return r; }
 function latest(){ let b=null; for (const r of reports.values()) if (!b || r.fecha>b.fecha || (r.fecha===b.fecha && tIdx(r.turno)>tIdx(b.turno))) b=r; return b; }
 
 /* ---------- tablero ---------- */
@@ -289,15 +297,16 @@ function renderDash(){
   const sh = el("div","shifthead");
   const h = el("h2",null,`Turno ${turnoName(r.turno)} · ${fmtDate(r.fecha)}`); sh.append(h);
   if (r.general) sh.append(el("span","mood "+r.general, r.general[0].toUpperCase()+r.general.slice(1)));
+  if (r.borrador) sh.append(el("span","chip borr", "En curso · sin enviar" + (r.guardado ? " · guardado " + hhmm(r.guardado) : "")));
   const who = el("span","sub", r.supervisor ? "Supervisor: "+r.supervisor : "Supervisor sin indicar"); if (r.ejemplo) who.append(el("span","ex","ejemplo")); sh.append(who);
   const pp = el("div","people");
   const aus = r.ausentes||[], ext = r.extras||[];
   const a = el("span"); a.append("Ausentes ", el("b",null,String(aus.length))); if (aus.length) a.append(" · " + aus.map(x => x.nombre + (x.motivo?" ("+x.motivo+")":"")).join(", "));
   const x = el("span"); x.append("Extras ", el("b",null,String(ext.length))); if (ext.length) x.append(" · " + ext.map(e => e.nombre + (e.motivo?" ("+e.motivo+")":"")).join(", "));
   pp.append(a, x); sh.append(pp);
-  const ab = el("button","secondary", avisoOpen ? "Cerrar aviso" : "Avisar cierre"); ab.type="button"; ab.onclick = () => { avisoOpen = !avisoOpen; renderDash(); }; sh.append(ab);
+  if (!r.borrador){ const ab = el("button","secondary", avisoOpen ? "Cerrar aviso" : "Avisar cierre"); ab.type="button"; ab.onclick = () => { avisoOpen = !avisoOpen; renderDash(); }; sh.append(ab); }
   body.append(sh);
-  if (avisoOpen) body.append(avisoPanel(r));
+  if (avisoOpen && !r.borrador) body.append(avisoPanel(r));
 
   /* resumen */
   const vs = r.vs || {};
@@ -308,7 +317,7 @@ function renderDash(){
   const cell = (lab, node, s) => { const d = el("div"); d.append(el("span","label",lab), node, el("span","sub",s)); return d; };
   const big = (v, unit, cls) => { const b = el("div","big"); b.textContent = v==null ? "—" : String(v); if (v!=null && unit) b.append(el("small",null,unit)); if (cls) b.className += " "+cls; return b; };
   sum.append(
-    (c => { c.classList.add("lead"); return c; })(cell("UPDT Value Stream", big(vs.updt," %"), "pérdida no planificada")),
+    (c => { c.classList.add("lead"); return c; })(cell("UPDT Value Stream", big(vs.updt," %", vs.updt!=null ? "c-"+bandUPDTvs(vs.updt) : ""), `target ${VS_UPDT_TARGET}% · pérdida no planificada`)),
     cell("OEE", big(vs.oee," %", bandHigh(vs.oee, VS_TARGET)), `target ${VS_TARGET}%`),
     cell("PDT", big(vs.pdt," %"), "pérdida planificada"),
     cell("Unidades", big(units ? units.toLocaleString("es-AR") : null,""), `${prodN} de ${MAQ.length} máquinas productivas`),
@@ -323,7 +332,7 @@ function renderDash(){
   TEMAS.forEach(t => { if (notas[t.k]) { const d = el("div","topic "+t.c); d.append(el("span","label",t.n), el("p",null,notas[t.k])); tp.append(d); } });
   if (!tp.children.length) tp.append(el("div","none","Sin novedades de seguridad, calidad, documentación ni avisos."));
   p1.append(tp);
-  const p2 = el("div","panel"); const ph2 = el("div","ph"); ph2.append(el("h2",null,"Pase al próximo turno"), el("span","sub","pendientes por área")); p2.append(ph2);
+  const p2 = el("div","panel"); const ph2 = el("div","ph"); ph2.append(el("h2",null,"Pase al próximo turno"), el("span","sub","pendientes y ROT por área")); p2.append(ph2);
   const ho = el("div","handoff");
   [...lineas.map(l=>({n:l.id, t:l.pendiente})), ...(r.elaboracion||[]).map(e=>({n: e.id==="2T"?"ELAB. 2T":"ELAB. PARALELO", t:e.pendiente}))]
     .filter(o=>o.t).forEach(o => { const d = el("div","ho"); d.append(el("strong",null,o.n), el("p",null,o.t)); ho.append(d); });
@@ -348,8 +357,7 @@ function renderDash(){
     if ((l.fallas||[]).length){ const r0 = el("div","row"); r0.append(el("span","label","Fallas"), el("span","label num",fallaMin(l)+" min")); fl.append(r0);
       l.fallas.slice().sort((a,b)=>b.minutos-a.minutos).forEach(f => { const rw = el("div","row"); rw.append(el("span",null,f.falla+(f.detalle?" — "+f.detalle:"")), el("span","num",f.minutos+"′")); fl.append(rw); }); card.append(fl); }
     if (l.detalle){ const d = el("details","more"); d.append(el("summary",null,"Detalle del turno"), el("p",null,l.detalle)); card.append(d); }
-    if (l.pendiente){ const p = el("div","pend"); p.append(el("b",null,"Pendiente"), l.pendiente); card.append(p); }
-    if (l.rot) card.append(el("div","sub","ROT: "+l.rot));
+    if (l.pendiente){ const p = el("div","pend"); p.append(el("b",null,"Pendiente / ROT"), l.pendiente); card.append(p); }
     if (l.estado!=="prod" && !l.detalle && !(l.fallas||[]).length) card.append(el("div","none","Sin novedades."));
     grid.append(card);
   });
@@ -387,7 +395,7 @@ function avisoTexto(r){
   const vs = r.vs || {}, out = [];
   out.push(`*Pase de turno ${turnoName(r.turno)} · ${fmtDate(r.fecha)}*`);
   if (r.supervisor) out.push(`Supervisor: ${r.supervisor}`);
-  out.push(`UPDT VS: ${vs.updt ?? "—"}% · OEE VS: ${vs.oee ?? "—"}% (target ${VS_TARGET}%)`);
+  out.push(`${ic[bandUPDTvs(vs.updt)]} UPDT VS: ${vs.updt ?? "—"}% (target ${VS_UPDT_TARGET}%) · OEE VS: ${vs.oee ?? "—"}% (target ${VS_TARGET}%)`);
   out.push("", "*Máquinas*");
   lin.forEach(l => { const c = maqCfg(l.id);
     if (l.estado==="prod") out.push(`${ic[bandUPDT(l)]} ${l.id}: UPDT ${l.updt ?? "—"}% (target ${c.updt}%)` + (l.oee!=null ? ` · OEE ${l.oee}%` : "") + (l.unidades!=null ? ` · ${Number(l.unidades).toLocaleString("es-AR")} u` : ""));
@@ -436,7 +444,7 @@ function renderHeat(){
     h.append(el("span","rl",m.id));
     slots.forEach(s => {
       const r = reports.get(keyOf(s.f,s.t)); const l = r && (r.lineas||[]).find(x=>x.id===m.id);
-      const b = el("button","h-"+(r ? bandUPDT(l||{id:m.id}) : "none"), l && l.estado==="prod" && l.updt!=null ? String(Math.round(l.updt)) : "");
+      const b = el("button","h-"+(r ? bandUPDT(l||{id:m.id}) : "none"), l && l.estado==="prod" && l.updt!=null ? (Math.round(l.updt*10)/10).toLocaleString("es-AR") : "");
       b.type="button"; b.title = `${m.id} · ${turnoName(s.t)} ${fmtDate(s.f)} · ` + (!r ? "sin reporte" : l && l.estado==="prod" ? (l.updt!=null ? `UPDT ${l.updt}% (target ${m.updt}%)` : "UPDT sin informar") + (l.oee!=null ? ` · OEE ${l.oee}%` : "") : (ESTADOS[l?.estado]||"no planificado"));
       if (s.f===sel.fecha && s.t===sel.turno) b.classList.add("sel");
       b.onclick = () => { sel.fecha=s.f; sel.turno=s.t; avisoOpen=false; renderDash(); };
@@ -476,8 +484,19 @@ function buildForm(){
   b0.append(g);
   const ex = el("div","notice"); ex.id="existsNote"; ex.hidden = true; const exs = el("span"); const exb = el("button","secondary","Cargar para editar"); exb.type="button"; ex.append(exs, exb); b0.append(ex);
   exb.onclick = () => { const r = reports.get(keyOf($("fDate").value, $("fTurno").value)); if (r) fillForm(r); };
-  const checkExists = () => { const k = keyOf($("fDate").value, $("fTurno").value); const has = reports.has(k); ex.hidden = !has; exs.textContent = has ? "Ya hay un pase para ese turno. Si enviás, se reemplaza." : ""; };
-  $("form").addEventListener("change", e => { if (e.target.id==="fDate"||e.target.id==="fTurno"||e.target.id==="form") checkExists(); });
+  const checkExists = (cambioTurno) => {
+    const k = keyOf($("fDate").value, $("fTurno").value), r = reports.get(k), local = leerLocal(k);
+    if (cambioTurno || !dirty){
+      const fuente = local && (!r || (local.guardado||"") > (r.guardado||r.enviado||"")) ? local : (r && r.borrador ? r : null);
+      if (fuente && fuente !== cargado){ cargado = fuente; fillForm(fuente, true); }
+    }
+    const rr = reports.get(k);
+    ex.hidden = !rr || rr.borrador; exb.hidden = !rr || rr.borrador;
+    exs.textContent = rr && !rr.borrador ? "Este turno ya fue enviado. Si volvés a enviar, se reemplaza." : "";
+    pintarEstado();
+  };
+  window.checkExists = checkExists;
+  $("form").addEventListener("change", e => { if (e.target.id==="fDate"||e.target.id==="fTurno") checkExists(true); else if (e.target.id==="form") checkExists(false); });
   const mf = el("div","field"); mf.append(el("span","label","¿Cómo anduvo el turno?")); const seg = el("div","seg"); seg.id="fMood"; seg.style.alignSelf="flex-start";
   ["bueno","regular","malo"].forEach(v => { const b = el("button",null,v[0].toUpperCase()+v.slice(1)); b.type="button"; b.dataset.v=v; b.setAttribute("aria-pressed","false"); b.onclick = () => setMood(mood===v?null:v); seg.append(b); });
   mf.append(seg); b0.append(mf); form.append(d0);
@@ -495,7 +514,7 @@ function buildForm(){
   const g3 = el("div","g2"); TEMAS.forEach(t => g3.append(inp("n_"+t.k, t.n, "textarea"))); b2.append(g3); form.append(d2);
 
   /* value stream */
-  const [d3, b3] = sec("Eficiencia Value Stream", true, el("span","tgt",`target OEE ${VS_TARGET}%`));
+  const [d3, b3] = sec("Eficiencia Value Stream", true, el("span","tgt",`target UPDT ${VS_UPDT_TARGET}% · OEE ${VS_TARGET}%`));
   const g4 = el("div","g3"); g4.append(inp("vs_updt","UPDT %","number",{min:0,max:100,step:"0.1",inputMode:"decimal"}), inp("vs_oee","OEE %","number",{min:0,max:100,step:"0.1",inputMode:"decimal"}), inp("vs_pdt","PDT %","number",{min:0,max:100,step:"0.1",inputMode:"decimal"})); b3.append(g4); form.append(d3);
 
   /* máquinas */
@@ -506,18 +525,20 @@ function buildForm(){
     g.append(ef, inp("u_"+m.id,"Unidades","number",{min:0,inputMode:"numeric"}), inp("up_"+m.id,"UPDT %","number",{min:0,max:100,step:"0.1",inputMode:"decimal"}), inp("o_"+m.id,"OEE %","number",{min:0,max:100,step:"0.01",inputMode:"decimal"}), inp("p_"+m.id,"PDT %","number",{min:0,max:100,step:"0.1",inputMode:"decimal"}));
     b.append(g);
     const fl = el("div","field"); fl.append(el("span","label","Fallas · Falla – Tiempo de pérdida – Detalle")); const fb = el("div"); fb.className="fbox"; fb.style.cssText="display:flex;flex-direction:column;gap:6px"; const fa = el("button","ghost","+ Agregar falla"); fa.type="button"; fa.onclick = () => fallaRow(fb); fl.append(fb, fa); b.append(fl);
-    b.append(inp("d_"+m.id,"Detalle","textarea"), inp("pe_"+m.id,"Pendiente para el próximo turno","textarea",{placeholder:"Lo que el próximo turno tiene que hacer o vigilar"}), inp("r_"+m.id,"ROT","text"));
+    b.append(inp("d_"+m.id,"Detalle","textarea"), inp("pe_"+m.id,"Pendiente / ROT","textarea",{placeholder:"Lo que el próximo turno tiene que hacer o vigilar para correr en target"}));
     form.append(d);
   });
 
   /* elaboración */
   ELAB.forEach(e => {
     const [d, b] = sec(e.n, false);
-    b.append(inp("l_"+e.id,"Lotes (separados por coma)","text",{placeholder:"JR4K, JR4L"}), inp("ed_"+e.id,"Detalle","textarea"), inp("ep_"+e.id,"Pendiente para el próximo turno","textarea"), inp("er_"+e.id,"ROT","text"));
+    b.append(inp("l_"+e.id,"Lotes (separados por coma)","text",{placeholder:"JR4K, JR4L"}), inp("ed_"+e.id,"Detalle","textarea"), inp("ep_"+e.id,"Pendiente / ROT","textarea",{placeholder:"Lo que el próximo turno tiene que hacer o vigilar para correr en target"}));
     form.append(d);
   });
 
-  const acts = el("div","actions"); const sb = el("button","primary","Enviar pase de turno"); sb.type="submit"; sb.id="fSubmit"; const sm = el("span","msg"); sm.id="fMsg"; sm.setAttribute("role","status"); acts.append(sb, sm); form.append(acts);
+  const acts = el("div","actions"); const gb = el("button","secondary","Guardar avance"); gb.type="button"; gb.id="fDraft"; gb.onclick = () => guardarAvance(false);
+  const sb = el("button","primary","Enviar pase de turno"); sb.type="submit"; sb.id="fSubmit"; const sm = el("span","msg"); sm.id="fMsg"; sm.setAttribute("role","status"); acts.append(gb, sb, sm); form.append(acts);
+  const bar = el("div","savebar"); bar.id = "saveBar"; const bt = el("span"); bt.id = "saveTxt"; bar.append(bt, el("span","sub","Se guarda solo cada 5 minutos. Al terminar el turno tocá Enviar.")); form.prepend(bar);
 
   $("fDate").value = today(); const hr = new Date().getHours(); $("fTurno").value = hr>=6&&hr<14 ? "M" : hr>=14&&hr<22 ? "T" : "N";
   checkExists();
@@ -525,7 +546,8 @@ function buildForm(){
 }
 function setMood(v){ mood = v; [...$("fMood").children].forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v===v))); }
 
-function fillForm(r){
+function fillForm(r, silencioso){
+  llenando = true;
   if (r.fecha) $("fDate").value = r.fecha; if (r.turno) $("fTurno").value = r.turno;
   $("fSup").value = r.supervisor||""; setMood(r.general||null);
   ["ausentes","extras"].forEach(k => { const box = $("f_"+k); box.replaceChildren(); (r[k]||[]).forEach(p => personRow(box,p)); });
@@ -534,10 +556,11 @@ function fillForm(r){
   MAQ.forEach(m => { const l = (r.lineas||[]).find(x=>x.id===m.id) || {estado:"noplan"};
     $("e_"+m.id).value = ESTADOS[l.estado] ? l.estado : "prod"; $("u_"+m.id).value = l.unidades ?? ""; $("o_"+m.id).value = l.oee ?? ""; $("up_"+m.id).value = l.updt ?? ""; $("p_"+m.id).value = l.pdt ?? "";
     const sec = document.querySelector(`details[data-maq="${m.id}"]`); const fb = sec.querySelector(".fbox"); fb.replaceChildren(); (l.fallas||[]).forEach(f => fallaRow(fb,f));
-    $("d_"+m.id).value = l.detalle||""; $("pe_"+m.id).value = l.pendiente||""; $("r_"+m.id).value = l.rot||"";
+    $("d_"+m.id).value = l.detalle||""; $("pe_"+m.id).value = l.pendiente||"";
     if (l.estado!=="noplan" || l.detalle) sec.open = true; });
-  ELAB.forEach(e => { const x = (r.elaboracion||[]).find(y=>y.id===e.id) || {}; $("l_"+e.id).value = (x.lotes||[]).join(", "); $("ed_"+e.id).value = x.detalle||""; $("ep_"+e.id).value = x.pendiente||""; $("er_"+e.id).value = x.rot||""; });
-  $("form").dispatchEvent(new Event("change"));
+  ELAB.forEach(e => { const x = (r.elaboracion||[]).find(y=>y.id===e.id) || {}; $("l_"+e.id).value = (x.lotes||[]).join(", "); $("ed_"+e.id).value = x.detalle||""; $("ep_"+e.id).value = x.pendiente||""; });
+  llenando = false; dirty = false; ultimoGuardado = r.guardado || r.enviado || null; estadoPase = r.borrador ? "borrador" : (reports.has(keyOf(r.fecha, r.turno)) ? "enviado" : "nuevo");
+  if (!silencioso) $("form").dispatchEvent(new Event("change")); else pintarEstado();
 }
 
 function readForm(){
@@ -552,26 +575,62 @@ function readForm(){
     const estado = $("e_"+m.id).value;
     const fallas = [...document.querySelector(`details[data-maq="${m.id}"] .fbox`).querySelectorAll(".fallarow")].map(r => { const [f,mn,d] = r.querySelectorAll("input"); return {falla:f.value.trim(), minutos:numOrNull(mn.value), detalle:d.value.trim()}; }).filter(f => f.falla || f.minutos);
     fallas.forEach(f => { if (!f.falla) errs.push(`${m.id}: falta el nombre de una falla.`); if (!f.minutos) errs.push(`${m.id}: indicá el tiempo de pérdida de "${f.falla||"la falla"}".`); });
-    const l = {id:m.id, estado, unidades:numOrNull($("u_"+m.id).value), oee:numOrNull($("o_"+m.id).value), updt:numOrNull($("up_"+m.id).value), pdt:numOrNull($("p_"+m.id).value), fallas, detalle:$("d_"+m.id).value.trim(), pendiente:$("pe_"+m.id).value.trim(), rot:$("r_"+m.id).value.trim()};
+    const l = {id:m.id, estado, unidades:numOrNull($("u_"+m.id).value), oee:numOrNull($("o_"+m.id).value), updt:numOrNull($("up_"+m.id).value), pdt:numOrNull($("p_"+m.id).value), fallas, detalle:$("d_"+m.id).value.trim(), pendiente:$("pe_"+m.id).value.trim()};
     if (estado==="prod" && l.updt==null) errs.push(`${m.id} está como Productivo: falta el UPDT.`);
     return l;
   });
-  const elaboracion = ELAB.map(e => ({id:e.id, lotes:$("l_"+e.id).value.split(/[,;\s]+/).map(s=>s.trim().toUpperCase()).filter(Boolean), detalle:$("ed_"+e.id).value.trim(), pendiente:$("ep_"+e.id).value.trim(), rot:$("er_"+e.id).value.trim()}));
+  const elaboracion = ELAB.map(e => ({id:e.id, lotes:$("l_"+e.id).value.split(/[,;\s]+/).map(s=>s.trim().toUpperCase()).filter(Boolean), detalle:$("ed_"+e.id).value.trim(), pendiente:$("ep_"+e.id).value.trim()}));
   return {errs, doc:{fecha, turno, supervisor, general:mood, ausentes:people("ausentes"), extras:people("extras"), notas, vs, lineas, elaboracion, enviado:new Date().toISOString()}};
 }
+
+/* ---------- avance del turno (borradores) ---------- */
+let dirty = false, llenando = false, cargado = null, ultimoGuardado = null, estadoPase = "nuevo", guardando = false, tLocal = null;
+const LKEY = k => "paseTurnoBorrador_" + k;
+function leerLocal(k){ try { const v = localStorage.getItem(LKEY(k)); return v ? JSON.parse(v) : null; } catch(_){ return null; } }
+function borrarLocal(k){ try { localStorage.removeItem(LKEY(k)); } catch(_){} }
+function pintarEstado(){
+  const t = $("saveTxt"); if (!t) return;
+  const base = estadoPase === "enviado" ? "Pase enviado" : ultimoGuardado ? "Avance guardado a las " + hhmm(ultimoGuardado) : "Pase nuevo, todavía sin guardar";
+  t.textContent = base + (dirty ? " · hay cambios sin guardar" : "");
+}
+$("form").addEventListener("input", () => { if (llenando) return; dirty = true; pintarEstado(); clearTimeout(tLocal); tLocal = setTimeout(() => { const {doc} = readForm(); if (doc.fecha && doc.turno){ doc.borrador = true; doc.guardado = new Date().toISOString(); try { localStorage.setItem(LKEY(keyOf(doc.fecha, doc.turno)), JSON.stringify(doc)); } catch(_){} } }, 1000); });
+$("form").addEventListener("click", e => { if (!llenando && e.target.closest("#fMood, .x, .ghost")) { dirty = true; pintarEstado(); } });
+async function guardarAvance(auto){
+  if (guardando || !SCRIPT_URL) return;
+  const msg = $("fMsg"); const {doc} = readForm();
+  if (!doc.fecha || !doc.turno) return;
+  const prev = reports.get(keyOf(doc.fecha, doc.turno));
+  if (prev && !prev.borrador){ if (!auto){ msg.className = "msg c-warn"; msg.textContent = "Este turno ya fue enviado: para cambiarlo usá Enviar pase de turno."; } return; }
+  if (auto && !dirty) return;
+  doc.borrador = true; doc.guardado = new Date().toISOString(); delete doc.enviado;
+  guardando = true; if (!auto){ $("fDraft").disabled = true; msg.className = "msg"; msg.textContent = "Guardando avance…"; }
+  try {
+    const res = await fetch(SCRIPT_URL, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify({action:"save", doc})});
+    const out = await res.json(); if (!out.ok) throw 0;
+    reports.set(keyOf(doc.fecha, doc.turno), doc); cargado = doc;
+    try { if (doc.supervisor) localStorage.setItem("paseTurnoSup", doc.supervisor); } catch(_){}
+    dirty = false; ultimoGuardado = doc.guardado; estadoPase = "borrador"; pintarEstado();
+    if (!auto){ msg.className = "msg c-ok"; msg.textContent = "Avance guardado. Podés seguir más tarde desde cualquier equipo."; }
+  } catch(_){ if (!auto){ msg.className = "msg c-bad"; msg.textContent = "No se pudo guardar. Lo que escribiste queda en este equipo; probá de nuevo en un rato."; } }
+  finally { guardando = false; $("fDraft").disabled = false; }
+}
+setInterval(() => { if (!$("viewForm").hidden || dirty) guardarAvance(true); }, 300000);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && dirty) guardarAvance(true); });
 
 $("form").onsubmit = async ev => {
   ev.preventDefault(); const msg = $("fMsg"); msg.className = "msg";
   const {errs, doc} = readForm();
   if (errs.length){ msg.textContent = errs[0] + (errs.length>1 ? ` (y ${errs.length-1} más)` : ""); msg.classList.add("c-bad"); return; }
-  const k = keyOf(doc.fecha, doc.turno), replacing = reports.has(k);
+  const k = keyOf(doc.fecha, doc.turno), replacing = reports.has(k) && !reports.get(k).borrador;
   $("fSubmit").disabled = true; msg.textContent = "Enviando…";
   try {
     if (!SCRIPT_URL) throw {code:"config"};
+    doc.borrador = false; doc.guardado = doc.enviado;
     const res = await fetch(SCRIPT_URL, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify({action:"save", doc})});
     const out = await res.json();
     if (!out.ok) throw {code: out.error || "server"};
     try { localStorage.setItem("paseTurnoSup", doc.supervisor); } catch(_){}
+    borrarLocal(k); dirty = false; cargado = doc; ultimoGuardado = doc.enviado; estadoPase = "enviado"; pintarEstado();
     reports.set(k, doc);
     msg.textContent = replacing ? "Pase actualizado." : "Pase enviado."; msg.classList.add("c-ok");
     sel.fecha = doc.fecha; sel.turno = doc.turno; avisoOpen = true; renderDash(); setTimeout(() => { setTab(false); window.scrollTo({top:0}); }, 500);
@@ -588,8 +647,8 @@ async function importText(){
 {"fecha":"YYYY-MM-DD","turno":"M"|"T"|"N","supervisor":string,"ausentes":[{"nombre":string,"motivo":string}],"extras":[{"nombre":string,"motivo":string}],
 "notas":{"reconocimientos":string,"seguridad":string,"calidad":string,"documentacion":string,"capacitacion":string,"avisos":string},
 "vs":{"oee":number|null,"updt":number|null,"pdt":number|null},
-"lineas":[{"id":"SIGPACK2"|"SIGPACK1"|"TOVER"|"MARCHESINI"|"BOATO2"|"BOATO1","estado":"prod"|"noplan"|"prueba"|"parada","unidades":number|null,"oee":number|null,"updt":number|null,"pdt":number|null,"fallas":[{"falla":string,"minutos":number,"detalle":string}],"detalle":string,"pendiente":string,"rot":string}],
-"elaboracion":[{"id":"2T"|"PAR","lotes":[string],"detalle":string,"pendiente":string,"rot":string}]}
+"lineas":[{"id":"SIGPACK2"|"SIGPACK1"|"TOVER"|"MARCHESINI"|"BOATO2"|"BOATO1","estado":"prod"|"noplan"|"prueba"|"parada","unidades":number|null,"oee":number|null,"updt":number|null,"pdt":number|null,"fallas":[{"falla":string,"minutos":number,"detalle":string}],"detalle":string,"pendiente":string}],
+"elaboracion":[{"id":"2T"|"PAR","lotes":[string],"detalle":string,"pendiente":string}]}
 Reglas: turno Mañana=M, Tarde=T, Noche=N. Si dice "No planificado" el estado es noplan; "Prueba productiva" es prueba; si tiene OEE numérico es prod. Usá números con punto decimal. Los valores de Target no se copian (ya están configurados). Incluí en "fallas" solo las que tengan tiempo de pérdida explícito. Las frases que piden algo al próximo turno ("queda pendiente", "hay que", "favor de", "debemos") van en "pendiente", copiadas casi textuales; el resto va en "detalle". Copiá los textos tal cual, corrigiendo solo errores de tipeo evidentes. Dejá "" o null lo que no esté. Los lotes son códigos como JR4K. Año por defecto: ${new Date().getFullYear()}.
 
 PASE:
@@ -614,17 +673,17 @@ function buildWorkbook(range){
   rs.forEach(r => {
     const tn = turnoName(r.turno), base = {Fecha:r.fecha, Turno:tn};
     const n = r.notas||{};
-    T.push({...base, Supervisor:r.supervisor||"", "Valoración":r.general||"", "UPDT VS %":r.vs?.updt??null, "OEE VS %":r.vs?.oee??null, "Target VS %":VS_TARGET, "PDT VS %":r.vs?.pdt??null, Ausentes:(r.ausentes||[]).length, Extras:(r.extras||[]).length, Seguridad:n.seguridad||"", Calidad:n.calidad||"", "Documentación":n.documentacion||"", Reconocimientos:n.reconocimientos||"", "Capacitación":n.capacitacion||"", Avisos:n.avisos||"", Ejemplo:r.ejemplo?"Sí":""});
+    T.push({...base, "Estado del pase": r.borrador ? "En curso (sin enviar)" : "Enviado", Supervisor:r.supervisor||"", "Valoración":r.general||"", "UPDT VS %":r.vs?.updt??null, "Target UPDT VS %":VS_UPDT_TARGET, "Cumple UPDT VS": r.vs?.updt!=null ? (r.vs.updt<=VS_UPDT_TARGET?"Sí":"No") : "", "OEE VS %":r.vs?.oee??null, "Target VS %":VS_TARGET, "PDT VS %":r.vs?.pdt??null, Ausentes:(r.ausentes||[]).length, Extras:(r.extras||[]).length, Seguridad:n.seguridad||"", Calidad:n.calidad||"", "Documentación":n.documentacion||"", Reconocimientos:n.reconocimientos||"", "Capacitación":n.capacitacion||"", Avisos:n.avisos||"", Ejemplo:r.ejemplo?"Sí":""});
     (r.lineas||[]).forEach(l => { const c = maqCfg(l.id)||{};
-      L.push({...base, "Máquina":l.id, Estado:ESTADOS[l.estado]||l.estado, Unidades:l.unidades??null, "UPDT %":l.updt??null, "Target UPDT %":c.updt, "Cumple UPDT":l.estado==="prod"&&l.updt!=null?(l.updt<=c.updt?"Sí":"No"):"", "OEE %":l.oee??null, "Target OEE %":c.oee, "PDT %":l.pdt??null, "Target PDT %":c.pdt, "Cumple OEE":l.estado==="prod"&&l.oee!=null?(l.oee>=c.oee?"Sí":"No"):"", "Min. fallas":fallaMin(l), Detalle:l.detalle||"", Pendiente:l.pendiente||"", ROT:l.rot||""});
+      L.push({...base, "Máquina":l.id, Estado:ESTADOS[l.estado]||l.estado, Unidades:l.unidades??null, "UPDT %":l.updt??null, "Target UPDT %":c.updt, "Cumple UPDT":l.estado==="prod"&&l.updt!=null?(l.updt<=c.updt?"Sí":"No"):"", "OEE %":l.oee??null, "Target OEE %":c.oee, "PDT %":l.pdt??null, "Target PDT %":c.pdt, "Cumple OEE":l.estado==="prod"&&l.oee!=null?(l.oee>=c.oee?"Sí":"No"):"", "Min. fallas":fallaMin(l), Detalle:l.detalle||"", "Pendiente / ROT":l.pendiente||""});
       (l.fallas||[]).forEach(f => F.push({...base, "Máquina":l.id, Falla:f.falla, "Tiempo de pérdida (min)":Number(f.minutos)||0, Detalle:f.detalle||""})); });
-    (r.elaboracion||[]).forEach(e => { const nm = ELAB.find(x=>x.id===e.id)?.n||e.id; if (!(e.lotes||[]).length) E.push({...base, "Área":nm, Lote:"", Detalle:e.detalle||"", Pendiente:e.pendiente||""}); else (e.lotes).forEach((lt,i) => E.push({...base, "Área":nm, Lote:lt, Detalle:i===0?(e.detalle||""):"", Pendiente:i===0?(e.pendiente||""):""})); });
+    (r.elaboracion||[]).forEach(e => { const nm = ELAB.find(x=>x.id===e.id)?.n||e.id; if (!(e.lotes||[]).length) E.push({...base, "Área":nm, Lote:"", Detalle:e.detalle||"", "Pendiente / ROT":e.pendiente||""}); else (e.lotes).forEach((lt,i) => E.push({...base, "Área":nm, Lote:lt, Detalle:i===0?(e.detalle||""):"", "Pendiente / ROT":i===0?(e.pendiente||""):""})); });
     (r.ausentes||[]).forEach(p => P.push({...base, Tipo:"Ausente", Nombre:p.nombre, Motivo:p.motivo||""}));
     (r.extras||[]).forEach(p => P.push({...base, Tipo:"Extra", Nombre:p.nombre, Motivo:p.motivo||""}));
   });
   const wb = XLSX.utils.book_new();
   const add = (rows, name, w) => { const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{Info:"Sin datos en el período"}]); ws["!cols"] = w.map(x=>({wch:x})); if (rows.length) ws["!autofilter"] = {ref:ws["!ref"]}; XLSX.utils.book_append_sheet(wb, ws, name); };
-  add(T,"Turnos",[11,9,16,10,9,10,10,9,9,7,40,40,40,30,30,40,8]);
+  add(T,"Turnos",[11,9,20,16,10,9,10,10,9,9,7,40,40,40,30,30,40,8]);
   add(L,"Maquinas",[11,9,12,18,10,8,12,11,8,11,8,12,11,10,60,50,12]);
   add(F,"Fallas",[11,9,12,28,12,40]);
   add(E,"Elaboracion",[11,9,24,8,60,50]);
@@ -652,7 +711,7 @@ async function loadReports(){
     const res = await fetch(SCRIPT_URL + "?action=list&t=" + Date.now());
     const out = await res.json();
     const m = new Map();
-    (out.reportes||[]).forEach(v => { if (v && v.fecha && v.turno && Array.isArray(v.lineas)) m.set(keyOf(v.fecha, v.turno), v); });
+    (out.reportes||[]).forEach(v => { if (v && v.fecha && v.turno && Array.isArray(v.lineas)) m.set(keyOf(v.fecha, v.turno), normalizar(v)); });
     const first = reports.size === 0;
     reports = m;
     if (first) sel.fecha = null;
