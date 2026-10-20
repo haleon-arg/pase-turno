@@ -391,7 +391,7 @@ const ddmm = f => f.split("-").reverse().slice(0,2).join("/");
 function avisoAsunto(r){ return `Pase de turno ${turnoName(r.turno)} ${ddmm(r.fecha)} – UPDT VS ${r.vs?.updt ?? "—"}%`; }
 function avisoTexto(r){
   const lin = MAQ.map(m => (r.lineas||[]).find(l => l.id===m.id) || {id:m.id, estado:"noplan"});
-  const ic = {ok:"🟢", warn:"🟡", bad:"🔴", idle:"⚪", nodata:"⚪"};
+  const ic = {ok:"\u2705", warn:"\u26A0\uFE0F", bad:"\u274C", idle:"\u25AB\uFE0F", nodata:"\u25AB\uFE0F"};
   const vs = r.vs || {}, out = [];
   out.push(`*Pase de turno ${turnoName(r.turno)} · ${fmtDate(r.fecha)}*`);
   if (r.supervisor) out.push(`Supervisor: ${r.supervisor}`);
@@ -416,7 +416,7 @@ function avisoPanel(r){
   const ph = el("div","ph"); ph.append(el("h2",null,"Avisar cierre del turno"), el("span","sub","WhatsApp se abre con el mensaje listo: elegís el grupo y enviás.")); p.append(ph);
   const pre = el("pre",null,txt); p.append(pre);
   const acts = el("div","actions");
-  const wa = el("a","wa","Enviar por WhatsApp"); wa.href = "https://wa.me/?text=" + encodeURIComponent(txt); wa.target = "_blank"; wa.rel = "noopener";
+  const wa = el("a","wa","Enviar por WhatsApp"); wa.href = "https://api.whatsapp.com/send?text=" + encodeURIComponent(txt); wa.target = "_blank"; wa.rel = "noopener";
   const cp = el("button","secondary","Copiar para mail"); cp.type = "button";
   const msg = el("span","msg"); msg.setAttribute("role","status");
   cp.onclick = () => {
@@ -424,7 +424,12 @@ function avisoPanel(r){
     const fallback = () => { const rg = document.createRange(); rg.selectNodeContents(pre); const s = getSelection(); s.removeAllRanges(); s.addRange(rg); msg.textContent = "Texto seleccionado: copialo con Ctrl+C."; };
     try { navigator.clipboard.writeText(plain).then(() => { msg.textContent = "Copiado. Pegalo en el cuerpo del mail."; }, fallback); } catch(_) { fallback(); }
   };
-  acts.append(wa, cp, msg); p.append(acts);
+  const cw = el("button","secondary","Copiar para WhatsApp"); cw.type = "button";
+  cw.onclick = () => {
+    const fallback = () => { const rg = document.createRange(); rg.selectNodeContents(pre); const s = getSelection(); s.removeAllRanges(); s.addRange(rg); msg.textContent = "Texto seleccionado: copialo con Ctrl+C."; };
+    try { navigator.clipboard.writeText(txt).then(() => { msg.textContent = "Copiado. Pegalo en el grupo de WhatsApp."; }, fallback); } catch(_) { fallback(); }
+  };
+  acts.append(wa, cw, cp, msg); p.append(acts);
   const as = el("div","sub"); as.append("Asunto sugerido para el mail: ", el("span","selectable",asunto)); p.append(as);
   return p;
 }
