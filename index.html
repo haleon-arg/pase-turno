@@ -90,7 +90,7 @@ textarea{min-height:64px;resize:vertical;line-height:1.4}
 .topics{display:flex;flex-direction:column;gap:10px}
 .topic{border-left:4px solid var(--tc,var(--idle));padding:2px 0 2px 12px}
 .topic p{margin:2px 0 0;white-space:pre-line;overflow-wrap:anywhere}
-.t-seg{--tc:var(--bad)}.t-cal{--tc:var(--warn)}.t-doc{--tc:var(--info)}.t-rec{--tc:var(--ok)}.t-cap{--tc:var(--info)}.t-av{--tc:var(--idle)}
+.t-seg{--tc:var(--bad)}.t-cal{--tc:var(--warn)}.t-anom{--tc:var(--accent)}.t-doc{--tc:var(--info)}.t-rec{--tc:var(--ok)}.t-cap{--tc:var(--info)}.t-av{--tc:var(--idle)}
 /* pase */
 .handoff{display:flex;flex-direction:column;gap:10px}
 .ho{display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px;padding-bottom:10px;border-bottom:1px solid var(--line)}
@@ -159,6 +159,7 @@ form{display:flex;flex-direction:column;gap:14px}
 .fbody{padding:0 16px 16px;display:flex;flex-direction:column;gap:12px}
 .g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.g2>.field:last-child:nth-child(odd){grid-column:1/-1}
 .g5{display:grid;grid-template-columns:1.4fr repeat(4,minmax(0,1fr));gap:10px}
 .tgt{font:500 12px var(--f-mono);color:var(--muted)}
 .dynrow{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) 32px;gap:6px;align-items:center}
@@ -245,7 +246,7 @@ const MAQ = [
 const ELAB = [{id:"2T", n:"Elaboración 2 toneladas"},{id:"PAR", n:"Elaboración paralelo"}];
 const TURNOS = [{k:"M",n:"Mañana",h:"06–14"},{k:"T",n:"Tarde",h:"14–22"},{k:"N",n:"Noche",h:"22–06"}];
 const ESTADOS = {prod:"Productivo", noplan:"No planificado", prueba:"Prueba productiva", parada:"Parada / Mant."};
-const TEMAS = [{k:"seguridad",n:"Seguridad",c:"t-seg"},{k:"calidad",n:"Calidad",c:"t-cal"},{k:"documentacion",n:"Documentación",c:"t-doc"},{k:"reconocimientos",n:"Reconocimientos",c:"t-rec"},{k:"capacitacion",n:"Capacitación",c:"t-cap"},{k:"avisos",n:"Avisos varios",c:"t-av"}];
+const TEMAS = [{k:"seguridad",n:"Seguridad",c:"t-seg"},{k:"calidad",n:"Calidad",c:"t-cal"},{k:"anomalias",n:"Anomalías",c:"t-anom"},{k:"documentacion",n:"Documentación",c:"t-doc"},{k:"reconocimientos",n:"Reconocimientos",c:"t-rec"},{k:"capacitacion",n:"Capacitación",c:"t-cap"},{k:"avisos",n:"Avisos varios",c:"t-av"}];
 const FALLAS_COMUNES = ["Falla mecánica","Falla eléctrica","Falta de material","Atasco / sobres trabados","Centrado de tubos","Sellado","Pharmacode / visión","Ajuste de peso","Cambio de formato","Falta de personal","Limpieza / lavado"];
 
 const $ = id => document.getElementById(id);
@@ -330,7 +331,7 @@ function renderDash(){
   const p1 = el("div","panel"); const ph1 = el("div","ph"); ph1.append(el("h2",null,"Temas del turno")); p1.append(ph1);
   const tp = el("div","topics"); const notas = r.notas||{};
   TEMAS.forEach(t => { if (notas[t.k]) { const d = el("div","topic "+t.c); d.append(el("span","label",t.n), el("p",null,notas[t.k])); tp.append(d); } });
-  if (!tp.children.length) tp.append(el("div","none","Sin novedades de seguridad, calidad, documentación ni avisos."));
+  if (!tp.children.length) tp.append(el("div","none","Sin novedades de seguridad, calidad, anomalías, documentación ni avisos."));
   p1.append(tp);
   const p2 = el("div","panel"); const ph2 = el("div","ph"); ph2.append(el("h2",null,"Pase al próximo turno"), el("span","sub","pendientes y ROT por área")); p2.append(ph2);
   const ho = el("div","handoff");
@@ -401,7 +402,7 @@ function avisoTexto(r){
     if (l.estado==="prod") out.push(`${ic[bandUPDT(l)]} ${l.id}: UPDT ${l.updt ?? "—"}% (target ${c.updt}%)` + (l.oee!=null ? ` · OEE ${l.oee}%` : "") + (l.unidades!=null ? ` · ${Number(l.unidades).toLocaleString("es-AR")} u` : ""));
     else out.push(`${ic.idle} ${l.id}: ${ESTADOS[l.estado]||l.estado}`); });
   const n = r.notas || {};
-  const temas = TEMAS.filter(t => n[t.k] && ["seguridad","calidad","documentacion"].includes(t.k));
+  const temas = TEMAS.filter(t => n[t.k] && ["seguridad","calidad","anomalias","documentacion"].includes(t.k));
   if (temas.length){ out.push(""); temas.forEach(t => out.push(`*${t.n}:* ${clip(n[t.k], 220)}`)); }
   const pend = [...lin.map(l => [l.id, l.pendiente]), ...(r.elaboracion||[]).map(e => [e.id==="2T" ? "Elab. 2T" : "Elab. paralelo", e.pendiente])].filter(p => p[1]);
   if (pend.length){ out.push("", "*Pendientes para el próximo turno*"); pend.forEach(([k,t]) => out.push(`• ${k}: ${clip(t, 220)}`)); }
@@ -678,7 +679,7 @@ function buildWorkbook(range){
   rs.forEach(r => {
     const tn = turnoName(r.turno), base = {Fecha:r.fecha, Turno:tn};
     const n = r.notas||{};
-    T.push({...base, "Estado del pase": r.borrador ? "En curso (sin enviar)" : "Enviado", Supervisor:r.supervisor||"", "Valoración":r.general||"", "UPDT VS %":r.vs?.updt??null, "Target UPDT VS %":VS_UPDT_TARGET, "Cumple UPDT VS": r.vs?.updt!=null ? (r.vs.updt<=VS_UPDT_TARGET?"Sí":"No") : "", "OEE VS %":r.vs?.oee??null, "Target VS %":VS_TARGET, "PDT VS %":r.vs?.pdt??null, Ausentes:(r.ausentes||[]).length, Extras:(r.extras||[]).length, Seguridad:n.seguridad||"", Calidad:n.calidad||"", "Documentación":n.documentacion||"", Reconocimientos:n.reconocimientos||"", "Capacitación":n.capacitacion||"", Avisos:n.avisos||"", Ejemplo:r.ejemplo?"Sí":""});
+    T.push({...base, "Estado del pase": r.borrador ? "En curso (sin enviar)" : "Enviado", Supervisor:r.supervisor||"", "Valoración":r.general||"", "UPDT VS %":r.vs?.updt??null, "Target UPDT VS %":VS_UPDT_TARGET, "Cumple UPDT VS": r.vs?.updt!=null ? (r.vs.updt<=VS_UPDT_TARGET?"Sí":"No") : "", "OEE VS %":r.vs?.oee??null, "Target VS %":VS_TARGET, "PDT VS %":r.vs?.pdt??null, Ausentes:(r.ausentes||[]).length, Extras:(r.extras||[]).length, Seguridad:n.seguridad||"", Calidad:n.calidad||"", "Anomalías":n.anomalias||"", "Documentación":n.documentacion||"", Reconocimientos:n.reconocimientos||"", "Capacitación":n.capacitacion||"", Avisos:n.avisos||"", Ejemplo:r.ejemplo?"Sí":""});
     (r.lineas||[]).forEach(l => { const c = maqCfg(l.id)||{};
       L.push({...base, "Máquina":l.id, Estado:ESTADOS[l.estado]||l.estado, Unidades:l.unidades??null, "UPDT %":l.updt??null, "Target UPDT %":c.updt, "Cumple UPDT":l.estado==="prod"&&l.updt!=null?(l.updt<=c.updt?"Sí":"No"):"", "OEE %":l.oee??null, "Target OEE %":c.oee, "PDT %":l.pdt??null, "Target PDT %":c.pdt, "Cumple OEE":l.estado==="prod"&&l.oee!=null?(l.oee>=c.oee?"Sí":"No"):"", "Min. fallas":fallaMin(l), Detalle:l.detalle||"", "Pendiente / ROT":l.pendiente||""});
       (l.fallas||[]).forEach(f => F.push({...base, "Máquina":l.id, Falla:f.falla, "Tiempo de pérdida (min)":Number(f.minutos)||0, Detalle:f.detalle||""})); });
